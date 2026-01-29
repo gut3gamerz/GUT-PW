@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GUT Logo Animation</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --primary-color: #3b82f6;
+            --accent-color: #60a5fa;
+            --text-color: #f8fafc;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: var(--bg-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+        }
+
+        .logo-wrapper {
+            position: relative;
+            width: 160px;
+            height: 160px;
+            margin: 0 auto 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .circle-outline {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 4px solid transparent;
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 2s linear infinite;
+        }
+
+        .gut-text-main {
+            font-size: 50px;
+            font-weight: 800;
+            color: var(--text-color);
+            letter-spacing: 2px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .powered-by {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 1s forwards 0.5s;
+            color: var(--accent-color);
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        .pw-text-sub {
+            font-weight: bold;
+            color: var(--text-color);
+        }
+
+        /* Animations */
+        @keyframes spin {
+            0% { transform: rotate(0deg); border-top-color: var(--primary-color); }
+            50% { border-top-color: var(--accent-color); }
+            100% { transform: rotate(360deg); border-top-color: var(--primary-color); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); text-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
+            50% { transform: scale(1.1); text-shadow: 0 0 20px rgba(59, 130, 246, 0.8); }
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .glow {
+            position: absolute;
+            width: 350px;
+            height: 350px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, rgba(15, 23, 42, 0) 70%);
+            z-index: -1;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="glow"></div>
+
+    <div class="container">
+        <div class="logo-wrapper">
+            <div class="circle-outline"></div>
+            <div class="gut-text-main">GUT</div>
+        </div>
+        <div class="powered-by">
+            Powered by <span class="pw-text-sub">PW</span>
+        </div>
+    </div>
+
+    <script>
+        // Set the timer for 5 seconds (5000 milliseconds)
+        setTimeout(function() {
+            // Replace the URL below with the page you want to open
+            window.location.href = "2option.html"; 
+        }, 5000);
+    </script>
+
+</body>
+</html>

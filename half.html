@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lecture Portal</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #22c55e;
+      --blue: #3b82f6;
+      --danger: #ef4444;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 16px;
+      --base-font-size: 16px;
+    }
+    body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: var(--base-font-size); }
+    [data-theme="light"] {
+        --bg: #f1f5f9;
+        --card: #ffffff;
+        --text: #1e293b;
+        --muted: #64748b;
+        --accent: #16a34a;
+        --blue: #2563eb;
+        --danger: #dc2626;
+        --shadow: 0 10px 30px rgba(0,0,0,.15);
+    }
+    .screen { display: none; min-height: 100vh; }
+    .screen.active { display: block; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    
+    /* Welcome Screen Specific Styles */
+    .welcome-screen { display: none; place-items: center; text-align: center; min-height: 100vh; }
+    .welcome-screen.active { display: grid; }
+    .welcome-text { font-size: clamp(40px, 8vw, 80px); font-weight: 900; text-transform: uppercase; animation: netflixIntro 2s ease forwards; opacity: 0; }
+    [data-theme="dark"] .welcome-text { color: white; }
+    [data-theme="light"] .welcome-text { color: var(--text); }
+    @keyframes netflixIntro { 0% { opacity: 0; transform: scale(0.8); filter: blur(8px); } 50% { opacity: 1; transform: scale(1.05); filter: blur(2px); } 100% { opacity: 1; transform: scale(1); filter: blur(0); } }
+
+    /* General Layout & Components */
+    .card { background: var(--card); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); }
+    .container { max-width: 960px; margin: auto; padding: 20px; }
+    .btn { padding: 10px 16px; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; transition: background .2s, color .2s; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-blue { background: var(--blue); color: #fff; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-ghost { background: transparent; border: 1px solid var(--muted); color: var(--text); }
+    .btn-ghost:hover { background: rgba(148, 163, 184, 0.1); }
+    [data-theme="light"] .btn-ghost:hover { background: rgba(100, 116, 139, 0.1); }
+    
+    input, select { width: 95%; padding: 12px; border-radius: 100px; border: 1px solid var(--muted); background: var(--card); color: var(--text); margin: 6px 0; }
+    input:focus, select:focus { border-color: var(--accent); outline: none; }
+    
+    .section { display: none; }
+    .section.active { display: block; }
+    .grid { display: grid; gap: 14px; }
+    .subjects.grid { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+    .lectures.grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+    .item { padding: 16px; border-radius: 12px; background: var(--card); cursor: pointer; transition: transform .2s, background .2s; position: relative; }
+    .item:hover { transform: translateY(-3px); background: #334155; }
+    [data-theme="light"] .item { background: #e2e8f0; }
+    [data-theme="light"] .item:hover { background: #cbd5e1; }
+    
+    .thumb { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 10px; margin-bottom: 8px; }
+    .popup { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; place-items: center; z-index: 1000; }
+    .popup.active { display: grid; }
+    .popup-content {
+      background: var(--card);
+      padding: 24px;
+      border-radius: var(--radius);
+      width: min(500px, 95%);
+      box-shadow: var(--shadow);
+      transform: scale(0.95);
+      transition: transform 0.3s ease;
+    }
+    .popup.active .popup-content {
+      transform: scale(1);
+    }
+    .popup-content h3 {
+      margin-top: 0;
+      font-size: 1.5rem;
+      color: var(--text);
+      border-bottom: 2px solid var(--blue);
+      padding-bottom: 12px;
+    }
+    .popup-content a {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #2a384e;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin: 10px 0;
+      text-decoration: none;
+      color: var(--text);
+      transition: background 0.2s;
+    }
+    [data-theme="light"] .popup-content a { background: #e2e8f0; color: #1e293b; }
+    .popup-content a:hover {
+      background: #334155;
+      color: var(--accent);
+    }
+    [data-theme="light"] .popup-content a:hover { background: #cbd5e1; }
+    .popup-content p {
+      color: var(--muted);
+      text-align: center;
+    }
+    h2 { margin-top: 0; }
+    .search-bar { flex-grow: 1; }
+    .search-results { padding: 10px; background: var(--card); border-radius: 12px; }
+    .search-results .result-item { padding: 10px; border-bottom: 1px solid var(--muted); cursor: pointer; }
+    .search-results .result-item:last-child { border-bottom: none; }
+    .search-results .result-item:hover { background: rgba(148, 163, 184, 0.1); border-radius: 8px; }
+    [data-theme="light"] .search-results .result-item:hover { background: rgba(100, 116, 139, 0.1); }
+    .result-item h4 { margin: 0; color: var(--accent); }
+    .result-item p { margin: 4px 0 0; color: var(--muted); font-size: 0.9rem; }
+    .header { display: flex; align-items: center; margin-bottom: 20px; gap: 10px; }
+    .actions-bar { display: flex; align-items: center; gap: 8px; }
+    .icon-btn { 
+        background: transparent;
+        border: 1px solid var(--muted);
+        color: var(--text);
+        border-radius: 100px;
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background 0.2s, color 0.2s;
+    }
+    .icon-btn:hover { background: rgba(148, 163, 184, 0.1); }
+    [data-theme="light"] .icon-btn:hover { background: rgba(100, 116, 139, 0.1); }
+    .completed-badge {
+      background-color: var(--accent);
+      color: white;
+      font-size: 0.75rem;
+      padding: 4px 8px;
+      border-radius: 8px;
+      font-weight: bold;
+      display: inline-block;
+    }
+    .item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;}
+    .item-header h4 { margin: 0; }
+    .search-input-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 5px 10px;
+      border: 1px solid var(--muted);
+      border-radius: 100px;
+      background: var(--card);
+      flex-grow: 1;
+      transition: border-color .2s;
+    }
+    .search-input-container:focus-within { border-color: var(--accent); }
+    .search-input-container input {
+        border: none;
+        background: transparent;
+        margin: 0;
+        padding: 5px;
+        flex-grow: 1;
+    }
+    .all-actions-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 8px;
+    }
+    .main-buttons {
+        display: flex;
+        gap: 8px;
+    }
+    /* New styles for the checkmark button */
+    .complete-btn {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background .2s, color .2s;
+        box-shadow: 0 2px 5px rgba(0,0,0,.2);
+    }
+    .complete-btn.incomplete {
+        background: rgba(100, 116, 139, 0.2);
+        color: var(--text);
+    }
+    .complete-btn.incomplete:hover {
+        background: rgba(100, 116, 139, 0.4);
+    }
+    .complete-btn.completed {
+        background: var(--accent);
+        color: #111; /* Dark tick mark */
+        cursor: default;
+    }
+
+    /* Admin Panel Specific Styles */
+    .admin-panel { padding: 20px; }
+    .admin-panel h2 { margin-top: 0; }
+    .admin-panel .form-group { margin-bottom: 20px; }
+    .admin-panel .form-group label { display: block; margin-bottom: 8px; font-weight: 600; }
+    .admin-panel .form-group input, .admin-panel .form-group select, .admin-panel .form-group textarea {
+      width: 100%;
+      box-sizing: border-box;
+      border-radius: 8px;
+      padding: 10px;
+      margin: 0;
+    }
+    .admin-panel .flex-container { display: flex; gap: 10px; }
+    .admin-panel .flex-item { flex-grow: 1; }
+    .admin-panel .remove-btn { 
+        background-color: var(--danger); 
+        color: white; 
+        font-size: 0.8em; 
+        padding: 5px 10px; 
+        border-radius: 8px;
+    }
+    .admin-list { padding: 0; list-style: none; }
+    .admin-list li { 
+        background: var(--card); 
+        margin-bottom: 10px; 
+        padding: 10px; 
+        border-radius: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .admin-login-popup {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      place-items: center;
+      z-index: 1001;
+    }
+    .admin-login-popup.active {
+      display: grid;
+    }
+    /* New styles for copy button */
+    .copy-button-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .copy-success {
+      color: var(--accent);
+      font-weight: 600;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .copy-success.active {
+      opacity: 1;
+    }
+    .file-input-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+    .file-row {
+        display: flex;
+        gap: 8px;
+    }
+    .file-row input {
+        flex-grow: 1;
+    }
+    .file-row button {
+        flex-shrink: 0;
+        width: auto;
+    }
+  </style>
+</head>
+<body data-theme="dark">
+
+  <section class="screen welcome-screen active" id="welcome">
+    <h1 class="welcome-text"></h1>
+  </section>
+
+  <section class="screen" id="main-screen">
+    <div class="container">
+      <div class="header">
+        <div class="search-bar">
+          <div class="search-input-container">
+            <i class="fas fa-search" style="color:var(--muted);"></i>
+            <input type="text" id="search-input" placeholder="Search for lectures..." oninput="searchLectures()">
+          </div>
+        </div>
+        <div class="actions-bar">
+          <button id="mode-btn" class="icon-btn" onclick="toggleDarkMode()" aria-label="Toggle dark/light mode">
+            <i class="fas fa-sun"></i>
+          </button>
+          <button class="icon-btn" onclick="openBookmarks()" aria-label="View bookmarks">
+            <i class="fas fa-bookmark"></i>
+          </button>
+          <button class='icon-btn' onclick='openAdminLoginPopup()' aria-label="Admin Panel">
+            <i class="fas fa-user-lock"></i>
+          </button>
+        </div>
+      </div>
+      
+      <div id="search-results" class="search-results" style="display:none;"></div>
+
+      <div id="subjects" class="section active">
+        <h2>Subjects</h2>
+        <div class="subjects grid" id="subjects-list"></div>
+      </div>
+      <div id="chapters" class="section"></div>
+      <div id="lectures" class="section"></div>
+      <div id="bookmarks-section" class="section"></div>
+    </div>
+  </section>
+
+  <section class="screen" id="admin-screen">
+    <div class="container admin-panel">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2>Admin Panel</h2>
+            <button class='btn btn-ghost' onclick='showMainScreen()'>Back</button>
+        </div>
+        <div class="card">
+            <h3>Add New Lecture</h3>
+            <div class="form-group">
+                <label for="admin-subject">Subject</label>
+                <select id="admin-subject" onchange="populateChapters('admin-subject', 'admin-chapter')"></select>
+            </div>
+            <div class="form-group">
+                <label for="admin-chapter">Chapter</label>
+                <select id="admin-chapter"></select>
+            </div>
+            <div class="form-group">
+                <label for="admin-lecture-name">Lecture Name</label>
+                <input type="text" id="admin-lecture-name" placeholder="Lecture Name">
+            </div>
+            <div class="form-group">
+                <label for="admin-thumbnail">Thumbnail URL</label>
+                <input type="url" id="admin-thumbnail" placeholder="https://via.placeholder.com/300x180">
+            </div>
+            <div class="form-group">
+                <label for="admin-watch-url">Watch URL</label>
+                <input type="url" id="admin-watch-url" placeholder="https://youtube.com/...">
+            </div>
+            <div class="form-group">
+                <label>Files (PDF, DOCX, etc.)</label>
+                <div id="file-inputs" class="file-input-group">
+                    <div class="file-row">
+                        <input type="text" class="file-name" placeholder="File Name">
+                        <input type="url" class="file-url" placeholder="File URL">
+                        <button class="btn btn-danger" onclick="removeFileOrDpp(this)">-</button>
+                    </div>
+                </div>
+                <button class="btn btn-ghost" onclick="addFileOrDpp('file-inputs')">Add File</button>
+            </div>
+            <div class="form-group">
+                <label>DPPs (Daily Practice Problems)</label>
+                <div id="dpp-inputs" class="file-input-group">
+                    <div class="file-row">
+                        <input type="text" class="dpp-name" placeholder="DPP Name">
+                        <input type="url" class="dpp-url" placeholder="DPP URL">
+                        <button class="btn btn-danger" onclick="removeFileOrDpp(this)">-</button>
+                    </div>
+                </div>
+                <button class="btn btn-ghost" onclick="addFileOrDpp('dpp-inputs')">Add DPP</button>
+            </div>
+            <button class="btn btn-primary" onclick="addLecture()">Add Lecture</button>
+        </div>
+        
+        <br>
+
+        <div class="card">
+            <h3>Manage Subjects & Chapters</h3>
+            <div class="form-group flex-container">
+                <div class="flex-item">
+                    <label for="new-subject-name">Add New Subject</label>
+                    <input type="text" id="new-subject-name" placeholder="Subject Name">
+                    <button class="btn btn-primary" onclick="addSubject()">Add Subject</button>
+                </div>
+                <div class="flex-item">
+                    <label for="subject-to-add-chapter-to">Add Chapter to Subject</label>
+                    <select id="subject-to-add-chapter-to" onchange="populateChapters('subject-to-add-chapter-to', null)"></select>
+                    <input type="text" id="new-chapter-name" placeholder="Chapter Name">
+                    <button class="btn btn-primary" onclick="addChapter()">Add Chapter</button>
+                </div>
+            </div>
+            
+            <hr style="border-color: var(--muted); margin: 20px 0;">
+
+            <h4>Delete Subjects</h4>
+            <ul id="delete-subjects-list" class="admin-list"></ul>
+            
+            <h4>Delete Chapters</h4>
+            <select id="subject-to-delete-chapter-from" onchange="populateChapters('subject-to-delete-chapter-from', 'delete-chapters-list'); renderAdminLists();"></select>
+            <ul id="delete-chapters-list" class="admin-list"></ul>
+            
+            <h4>Delete Lectures</h4>
+            <select id="subject-to-delete-lecture-from" onchange="populateChapters('subject-to-delete-lecture-from', 'chapter-to-delete-lecture-from'); renderAdminLists();"></select>
+            <select id="chapter-to-delete-lecture-from" onchange="renderAdminLists();"></select>
+            <ul id="delete-lectures-list" class="admin-list"></ul>
+        </div>
+        
+        <br>
+
+        <div class="card">
+            <h3>Export Data</h3>
+            <div class="copy-button-container">
+                <button class="btn btn-blue" onclick="generateCode()">Generate New Code</button>
+                <button class="btn btn-primary" onclick="copyCode()"><i class="fas fa-copy"></i> Copy</button>
+                <span id="copy-success" class="copy-success">Copied!</span>
+            </div>
+        </div>
+    </div>
+  </section>
+  
+  <div id="popup" class="popup">
+    <div class="popup-content">
+      <h3>Files</h3>
+      <div id="file-links"></div>
+      <button class="btn btn-danger" onclick="closePopup()">Close</button>
+    </div>
+  </div>
+
+  <div id="admin-login-popup" class="admin-login-popup">
+    <div class="popup-content">
+        <h3>Admin Login</h3>
+        <input type="text" id="admin-id" placeholder="ID">
+        <input type="password" id="admin-password" placeholder="Password">
+        <p id="admin-error" style="color:var(--danger); text-align:center;"></p>
+        <button class="btn btn-primary" onclick="checkAdminPassword()">Login</button>
+        <button class="btn btn-ghost" onclick="closeAdminLoginPopup()">Cancel</button>
+    </div>
+  </div>
+
+  <script>
+    let currentUser = "Ghanshyam"; // Set default user
+    let fullData = {
+      "Science": {
+        "Physics": [
+          {
+            "name": "Physics Lecture 2",
+            "thumbnail": "https://via.placeholder.com/300x180?text=Physics+L2",
+            "watch": "https://drive.google.com/phy2",
+            "files": [],
+            "dpp": [{ "name": "DPP 2.pdf", "link": "https://drive.google.com/dpp2" }]
+          }
+        ],
+        "Chemistry": [],
+        "Biology": []
+      }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme) {
+        document.body.dataset.theme = savedTheme;
+        updateModeIcon(savedTheme);
+      }
+      
+      // TRIGGER AUTO LOGIN ON LOAD
+      const welcomeTextElement = document.querySelector('#welcome .welcome-text');
+      welcomeTextElement.innerText = `Welcome ${currentUser}`;
+      
+      setTimeout(() => {
+        setActiveScreen('main-screen');
+        renderSubjects();
+        history.replaceState({ screen: 'main' }, '', '#main');
+      }, 2500);
+
+      populateAdminPanel();
+    });
+    
+    window.addEventListener('popstate', (event) => {
+        if (event.state) {
+            const { screen, subject, chapter, query, lectureName } = event.state;
+            if (screen === 'main') {
+                setActiveScreen('main-screen');
+                setActiveSection('subjects');
+            } else if (screen === 'chapters') {
+                openChapters(subject, false);
+            } else if (screen === 'lectures') {
+                openLectures(subject, chapter, false);
+            } else if (screen === 'bookmarks') {
+                openBookmarks(false);
+            } else if (screen === 'search') {
+                document.getElementById('search-input').value = query;
+                searchLectures(false);
+            } else if (screen === 'single_lecture') {
+                showFoundLecture(subject, chapter, lectureName, false);
+            } else if (screen === 'admin') {
+                showAdminPanel(false);
+            }
+        }
+    });
+
+    function toggleDarkMode() {
+      const currentTheme = document.body.dataset.theme;
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      document.body.dataset.theme = newTheme;
+      localStorage.setItem('theme', newTheme);
+      updateModeIcon(newTheme);
+      renderSubjects();
+    }
+    
+    function updateModeIcon(theme) {
+      const modeBtn = document.getElementById('mode-btn');
+      modeBtn.innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+    }
+    
+    function getUserData(type) {
+        const key = `${currentUser.toLowerCase()}_${type}`;
+        const data = localStorage.getItem(key);
+        return data ? JSON.parse(data) : [];
+    }
+
+    function saveUserData(type, data) {
+        const key = `${currentUser.toLowerCase()}_${type}`;
+        localStorage.setItem(key, JSON.stringify(data));
+    }
+    
+    function saveProgress(lectureName, subject, chapter) {
+      const completedLectures = getUserData('completed_lectures');
+      const index = completedLectures.indexOf(lectureName);
+      if (index > -1) completedLectures.splice(index, 1);
+      else completedLectures.push(lectureName);
+      saveUserData('completed_lectures', completedLectures);
+      if (subject && chapter) openLectures(subject, chapter, false);
+      else if (window.location.hash.includes('bookmarks')) openBookmarks(false);
+      else if (window.location.hash.includes('search')) searchLectures();
+      else renderSubjects();
+    }
+
+    function addBookmark(lecture) {
+      const bookmarks = getUserData('bookmarks');
+      if (!bookmarks.some(b => b.name === lecture.name)) {
+        bookmarks.push(lecture);
+        saveUserData('bookmarks', bookmarks);
+        alert(`${lecture.name} added!`);
+      } else alert(`Already bookmarked.`);
+    }
+    
+    function removeBookmark(lectureName) {
+        let bookmarks = getUserData('bookmarks');
+        bookmarks = bookmarks.filter(b => b.name !== lectureName);
+        saveUserData('bookmarks', bookmarks);
+        openBookmarks();
+    }
+
+    function openBookmarks(pushState = true) {
+      const bookmarks = getUserData('bookmarks');
+      setActiveSection('bookmarks-section');
+      if (pushState) history.pushState({ screen: 'bookmarks' }, '', '#bookmarks');
+      const bookmarksSection = document.getElementById('bookmarks-section');
+      const completedLectures = getUserData('completed_lectures');
+      bookmarksSection.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h2>My Bookmarks</h2><button class='btn btn-ghost' onclick='goBack()'>Back</button>
+        </div>
+        <div class='lectures grid'>
+          ${bookmarks.length ? bookmarks.map(lec => {
+            const isCompleted = completedLectures.includes(lec.name);
+            return `<div class='item'>
+                <div class="item-header"><h4>${lec.name}</h4><button class="btn btn-danger" onclick="removeBookmark('${lec.name}')">Remove</button></div>
+                <button class="complete-btn ${isCompleted?'completed':'incomplete'}" onclick="saveProgress('${lec.name}')"><i class="fas fa-check"></i></button>
+                <img src='${lec.thumbnail}' class='thumb' onclick="window.open('${lec.watch}','_blank')"/>
+                <div class="all-actions-row"><div class="main-buttons">
+                    <button class='btn btn-blue' onclick="window.open('${lec.watch}','_blank')">Watch</button>
+                    <button class='btn btn-primary' onclick='openPopup(${JSON.stringify(lec.files)}, "Files")'>Files</button>
+                    <button class='btn btn-blue' onclick='openPopup(${JSON.stringify(lec.dpp)}, "DPP")'>DPP</button>
+                </div></div></div>`;
+          }).join('') : '<p>No bookmarks saved.</p>'}
+        </div>`;
+    }
+
+    function setActiveScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+    }
+    
+    function setActiveSection(sectionId) {
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      if (sectionId) document.getElementById(sectionId).classList.add('active');
+      document.getElementById('search-results').style.display = 'none';
+      document.getElementById('search-input').value = '';
+    }
+
+    function goBack() { window.history.back(); }
+    
+    function renderSubjects() {
+      setActiveSection('subjects');
+      const subjectsList = document.getElementById('subjects-list');
+      subjectsList.innerHTML = Object.keys(fullData).map(sub => `<div class='item' onclick="openChapters('${sub}')">${sub}</div>`).join('');
+    }
+
+    function openChapters(subject, pushState = true) {
+      if (pushState) history.pushState({ screen: 'chapters', subject: subject }, '', `#${subject}`);
+      setActiveSection('chapters');
+      document.getElementById('chapters').innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h2>${subject}</h2><button class='btn btn-ghost' onclick='goBack()'>Back</button>
+        </div>
+        <div class='grid'>${Object.keys(fullData[subject]).map(chap => `<div class='item' onclick="openLectures('${subject}','${chap}')">${chap}</div>`).join('')}</div>`;
+    }
+
+    function openLectures(subject, chapter, pushState = true) {
+      if (pushState) history.pushState({ screen: 'lectures', subject: subject, chapter: chapter }, '', `#${subject}/${chapter}`);
+      setActiveSection('lectures');
+      const lectures = fullData[subject][chapter];
+      const completedLectures = getUserData('completed_lectures');
+      document.getElementById('lectures').innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h2>${chapter}</h2><button class='btn btn-ghost' onclick='goBack()'>Back</button>
+        </div>
+        <div class='lectures grid'>
+          ${lectures.map(lec => {
+            const isCompleted = completedLectures.includes(lec.name);
+            return `<div class='item'>
+                <button class="complete-btn ${isCompleted?'completed':'incomplete'}" onclick="saveProgress('${lec.name}', '${subject}', '${chapter}')"><i class="fas fa-check"></i></button>
+                <h4>${lec.name}</h4><img src='${lec.thumbnail}' class='thumb' onclick="window.open('${lec.watch}','_blank')"/>
+                <div class="all-actions-row"><div class="main-buttons">
+                    <button class='btn btn-blue' onclick="window.open('${lec.watch}','_blank')">Watch</button>
+                    <button class='btn btn-primary' onclick='openPopup(${JSON.stringify(lec.files)}, "Files")'>Files</button>
+                    <button class='btn btn-blue' onclick='openPopup(${JSON.stringify(lec.dpp)}, "DPP")'>DPP</button>
+                </div><button class='icon-btn' onclick='addBookmark(${JSON.stringify(lec)})'><i class="fas fa-bookmark"></i></button></div></div>`;
+          }).join('')}
+        </div>`;
+    }
+
+    function openPopup(files, title) {
+      const popup = document.getElementById('popup');
+      document.querySelector('#popup .popup-content h3').innerText = title;
+      document.getElementById('file-links').innerHTML = files.length ? files.map(f => `<a href='${f.link}' target='_blank'>${f.name}</a>`).join('') : '<p>No files available</p>';
+      popup.classList.add('active');
+    }
+    function closePopup() { document.getElementById('popup').classList.remove('active'); }
+    
+    function showMainScreen() {
+      document.getElementById('search-input').value = '';
+      document.getElementById('search-results').style.display = 'none';
+      setActiveScreen('main-screen');
+      setActiveSection('subjects');
+    }
+    
+    function searchLectures(pushState = true) {
+      const query = document.getElementById('search-input').value.toLowerCase();
+      const resultsDiv = document.getElementById('search-results');
+      if (query.length > 0) {
+        if (pushState) history.pushState({ screen: 'search', query: query }, '', `#search?q=${query}`);
+        document.querySelectorAll('.section').forEach(s => s.style.display = 'none');
+        resultsDiv.style.display = 'block';
+        let found = [];
+        for (const sub in fullData) for (const chap in fullData[sub]) fullData[sub][chap].forEach(lec => {
+          if (lec.name.toLowerCase().includes(query) || sub.toLowerCase().includes(query) || chap.toLowerCase().includes(query)) found.push({ sub, chap, lec });
+        });
+        resultsDiv.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;"><h2>Search Results</h2><button class='btn btn-ghost' onclick='showMainScreen()'>Back</button></div>
+            ${found.length ? found.map(i => `<div class='result-item' onclick="showFoundLecture('${i.sub}', '${i.chap}', '${i.lec.name}')"><h4>${i.lec.name}</h4><p>${i.sub} - ${i.chap}</p></div>`).join('') : '<p>No results.</p>'}`;
+      } else showMainScreen();
+    }
+
+    function showFoundLecture(subject, chapter, lectureName, pushState = true) {
+      const lec = fullData[subject][chapter].find(l => l.name === lectureName);
+      if (!lec) return;
+      setActiveSection('lectures');
+      if (pushState) history.pushState({ screen: 'single_lecture', subject, chapter, lectureName }, '', `#${subject}/${chapter}/${lectureName}`);
+      const isCompleted = getUserData('completed_lectures').includes(lec.name);
+      document.getElementById('lectures').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;"><h2>${lec.name}</h2><button class='btn btn-ghost' onclick='goBack()'>Back</button></div>
+        <div class='lectures grid'><div class='item'>
+            <button class="complete-btn ${isCompleted?'completed':'incomplete'}" onclick="saveProgress('${lec.name}', '${subject}', '${chapter}')"><i class="fas fa-check"></i></button>
+            <h4>${lec.name}</h4><img src='${lec.thumbnail}' class='thumb' onclick="window.open('${lec.watch}','_blank')"/>
+            <div class="all-actions-row"><div class="main-buttons">
+                <button class='btn btn-blue' onclick="window.open('${lec.watch}','_blank')">Watch</button>
+                <button class='btn btn-primary' onclick='openPopup(${JSON.stringify(lec.files)}, "Files")'>Files</button>
+                <button class='btn btn-blue' onclick='openPopup(${JSON.stringify(lec.dpp)}, "DPP")'>DPP</button>
+            </div><button class='icon-btn' onclick='addBookmark(${JSON.stringify(lec)})'><i class="fas fa-bookmark"></i></button></div></div></div>`;
+    }
+
+    // ADMIN FUNCTIONS
+    function openAdminLoginPopup() { document.getElementById('admin-login-popup').classList.add('active'); }
+    function closeAdminLoginPopup() { document.getElementById('admin-login-popup').classList.remove('active'); }
+    function checkAdminPassword() {
+      if (document.getElementById('admin-id').value === 'Lll' && document.getElementById('admin-password').value === 'Pass') {
+        closeAdminLoginPopup(); showAdminPanel();
+      } else document.getElementById('admin-error').innerText = "Invalid credentials.";
+    }
+    function showAdminPanel(pushState = true) {
+        if (pushState) history.pushState({ screen: 'admin' }, '', '#admin');
+        setActiveScreen('admin-screen'); populateAdminPanel();
+    }
+    function populateAdminPanel() {
+        populateSelect('admin-subject'); populateSelect('subject-to-add-chapter-to'); populateSelect('subject-to-delete-chapter-from'); populateSelect('subject-to-delete-lecture-from');
+        populateChapters('admin-subject', 'admin-chapter'); renderAdminLists();
+    }
+    function populateSelect(id) {
+        const s = document.getElementById(id); s.innerHTML = '<option value="">-- Select --</option>';
+        Object.keys(fullData).forEach(sub => s.innerHTML += `<option value="${sub}">${sub}</option>`);
+    }
+    function populateChapters(subId, chapId) {
+        const sub = document.getElementById(subId).value; const c = document.getElementById(chapId);
+        if (c) { c.innerHTML = '<option value="">-- Select --</option>'; if (sub) Object.keys(fullData[sub]).forEach(chap => c.innerHTML += `<option value="${chap}">${chap}</option>`); }
+    }
+    function addFileOrDpp(id) {
+        const row = document.createElement('div'); row.className = 'file-row'; const type = id.includes('file') ? 'file' : 'dpp';
+        row.innerHTML = `<input type="text" class="${type}-name" placeholder="Name"><input type="url" class="${type}-url" placeholder="URL"><button class="btn btn-danger" onclick="this.parentElement.remove()">-</button>`;
+        document.getElementById(id).appendChild(row);
+    }
+    function addSubject() {
+        const name = document.getElementById('new-subject-name').value.trim();
+        if (name && !fullData[name]) { fullData[name] = {}; populateAdminPanel(); }
+    }
+    function addChapter() {
+        const sub = document.getElementById('subject-to-add-chapter-to').value; const name = document.getElementById('new-chapter-name').value.trim();
+        if (sub && name && !fullData[sub][name]) { fullData[sub][name] = []; populateAdminPanel(); }
+    }
+    function addLecture() {
+        const sub = document.getElementById('admin-subject').value; const chap = document.getElementById('admin-chapter').value;
+        const name = document.getElementById('admin-lecture-name').value;
+        if (sub && chap && name) {
+            fullData[sub][chap].push({ name, thumbnail: document.getElementById('admin-thumbnail').value, watch: document.getElementById('admin-watch-url').value, files: [], dpp: [] });
+            populateAdminPanel();
+        }
+    }
+    function deleteSubject(sub) { delete fullData[sub]; populateAdminPanel(); }
+    function renderAdminLists() {
+        const sub = document.getElementById('subject-to-delete-chapter-from').value;
+        const list = document.getElementById('delete-subjects-list');
+        list.innerHTML = Object.keys(fullData).map(s => `<li>${s} <button class="btn remove-btn" onclick="deleteSubject('${s}')">Delete</button></li>`).join('');
+    }
+    function generateCode() {
+        const code = `const fullData = ${JSON.stringify(fullData, null, 2)};`;
+        const win = window.open('', '_blank');
+        win.document.write(`<pre>${code}</pre>`); win.document.close();
+    }
+    function copyCode() {
+        navigator.clipboard.writeText(`const fullData = ${JSON.stringify(fullData, null, 2)};`).then(() => alert("Copied!"));
+    }
+  </script>
+</body>
+</html>

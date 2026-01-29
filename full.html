@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lecture Portal</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #22c55e;
+      --blue: #3b82f6;
+      --danger: #ef4444;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 16px;
+      --base-font-size: 16px;
+    }
+    body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: var(--base-font-size); }
+    [data-theme="light"] {
+        --bg: #f1f5f9;
+        --card: #ffffff;
+        --text: #1e293b;
+        --muted: #64748b;
+        --accent: #16a34a;
+        --blue: #2563eb;
+        --danger: #dc2626;
+        --shadow: 0 10px 30px rgba(0,0,0,.15);
+    }
+    .screen { display: none; min-height: 100vh; }
+    .screen.active { display: block; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    
+    /* Welcome Screen Specific Styles */
+    .welcome-screen { display: none; place-items: center; text-align: center; min-height: 100vh; }
+    .welcome-screen.active { display: grid; }
+    .welcome-text { font-size: clamp(40px, 8vw, 80px); font-weight: 900; text-transform: uppercase; animation: netflixIntro 2s ease forwards; opacity: 0; }
+    [data-theme="dark"] .welcome-text { color: white; }
+    [data-theme="light"] .welcome-text { color: var(--text); }
+    @keyframes netflixIntro { 0% { opacity: 0; transform: scale(0.8); filter: blur(8px); } 50% { opacity: 1; transform: scale(1.05); filter: blur(2px); } 100% { opacity: 1; transform: scale(1); filter: blur(0); } }
+
+    /* General Layout & Components */
+    .card { background: var(--card); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); }
+    .container { max-width: 960px; margin: auto; padding: 20px; }
+    .btn { padding: 10px 16px; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; transition: background .2s, color .2s; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-blue { background: var(--blue); color: #fff; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-ghost { background: transparent; border: 1px solid var(--muted); color: var(--text); }
+    .btn-ghost:hover { background: rgba(148, 163, 184, 0.1); }
+    [data-theme="light"] .btn-ghost:hover { background: rgba(100, 116, 139, 0.1); }
+    
+    input, select { width: 95%; padding: 12px; border-radius: 100px; border: 1px solid var(--muted); background: var(--card); color: var(--text); margin: 6px 0; }
+    input:focus, select:focus { border-color: var(--accent); outline: none; }
+    
+    .section { display: none; }
+    .section.active { display: block; }
+    .grid { display: grid; gap: 14px; }
+    .subjects.grid { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+    .lectures.grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+    .item { padding: 16px; border-radius: 12px; background: var(--card); cursor: pointer; transition: transform .2s, background .2s; position: relative; }
+    .item:hover { transform: translateY(-3px); background: #334155; }
+    [data-theme="light"] .item { background: #e2e8f0; }
+    [data-theme="light"] .item:hover { background: #cbd5e1; }
+    
+    .thumb { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 10px; margin-bottom: 8px; }
+    .popup { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; place-items: center; z-index: 1000; }
+    .popup.active { display: grid; }
+    .popup-content {
+      background: var(--card);
+      padding: 24px;
+      border-radius: var(--radius);
+      width: min(500px, 95%);
+      box-shadow: var(--shadow);
+      transform: scale(0.95);
+      transition: transform 0.3s ease;
+    }
+    .popup.active .popup-content {
+      transform: scale(1);
+    }
+    .popup-content h3 {
+      margin-top: 0;
+      font-size: 1.5rem;
+      color: var(--text);
+      border-bottom: 2px solid var(--blue);
+      padding-bottom: 12px;
+    }
+    .popup-content a {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #2a384e;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin: 10px 0;
+      text-decoration: none;
+      color: var(--text);
+      transition: background 0.2s;
+    }
+    [data-theme="light"] .popup-content a { background: #e2e8f0; color: #1e293b; }
+    .popup-content a:hover {
+      background: #334155;
+      color: var(--accent);
+    }
+    [data-theme="light"] .popup-content a:hover { background: #cbd5e1; }
+    .popup-content p {
+      color: var(--muted);
+      text-align: center;
+    }
+    h2 { margin-top: 0; }
+    .search-bar { flex-grow: 1; }
+    .search-results { padding: 10px; background: var(--card); border-radius: 12px; }
+    .search-results .result-item { padding: 10px; border-bottom: 1px solid var(--muted); cursor: pointer; }
+    .search-results .result-item:last-child { border-bottom: none; }
+    .search-results .result-item:hover { background: rgba(148, 163, 184, 0.1); border-radius: 8px; }
+    [data-theme="light"] .search-results .result-item:hover { background: rgba(100, 116, 139, 0.1); }
+    .result-item h4 { margin: 0; color: var(--accent); }
+    .result-item p { margin: 4px 0 0; color: var(--muted); font-size: 0.9rem; }
+    .header { display: flex; align-items: center; margin-bottom: 20px; gap: 10px; }
+    .actions-bar { display: flex; align-items: center; gap: 8px; }
+    .icon-btn { 
+        background: transparent;
+        border: 1px solid var(--muted);
+        color: var(--text);
+        border-radius: 100px;
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background 0.2s, color 0.2s;
+    }
+    .icon-btn:hover { background: rgba(148, 163, 184, 0.1); }
+    [data-theme="light"] .icon-btn:hover { background: rgba(100, 116, 139, 0.1); }
+    .completed-badge {
+      background-color: var(--accent);
+      color: white;
+      font-size: 0.75rem;
+      padding: 4px 8px;
+      border-radius: 8px;
+      font-weight: bold;
+      display: inline-block;
+    }
+    .item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;}
+    .item-header h4 { margin: 0; }
+    .search-input-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 5px 10px;
+      border: 1px solid var(--muted);
+      border-radius: 100px;
+      background: var(--card);
+      flex-grow: 1;
+      transition: border-color .2s;
+    }
+    .search-input-container:focus-within { border-color: var(--accent); }
+    .search-input-container input {
+        border: none;
+        background: transparent;
+        margin: 0;
+        padding: 5px;
+        flex-grow: 1;
+    }
+    .all-actions-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 8px;
+    }
+    .main-buttons {
+        display: flex;
+        gap: 8px;
+    }
+    /* New styles for the checkmark button */
+    .complete-btn {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background .2s, color .2s;
+        box-shadow: 0 2px 5px rgba(0,0,0,.2);
+    }
+    .complete-btn.incomplete {
+        background: rgba(100, 116, 139, 0.2);
+        color: var(--text);
+    }
+    .complete-btn.incomplete:hover {
+        background: rgba(100, 116, 139, 0.4);
+    }
+    .complete-btn.completed {
+        background: var(--accent);
+        color: #111; /* Dark tick mark */
+        cursor: default;
+    }
+
+    /* Admin Panel Specific Styles */
+    .admin-panel { padding: 20px; }
+    .admin-panel h2 { margin-top: 0; }
+    .admin-panel .form-group { margin-bottom: 20px; }
+    .admin-panel .form-group label { display: block; margin-bottom: 8px; font-weight: 600; }
+    .admin-panel .form-group input, .admin-panel .form-group select, .admin-panel .form-group textarea {
+      width: 100%;
+      box-sizing: border-box;
+      border-radius: 8px;
+      padding: 10px;
+      margin: 0;
+    }
+    .admin-panel .flex-container { display: flex; gap: 10px; }
+    .admin-panel .flex-item { flex-grow: 1; }
+    .admin-panel .remove-btn { 
+        background-color: var(--danger); 
+        color: white; 
+        font-size: 0.8em; 
+        padding: 5px 10px; 
+        border-radius: 8px;
+    }
+    .admin-list { padding: 0; list-style: none; }
+    .admin-list li { 
+        background: var(--card); 
+        margin-bottom: 10px; 
+        padding: 10px; 
+        border-radius: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .admin-login-popup {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      place-items: center;
+      z-index: 1001;
+    }
+    .admin-login-popup.active {
+      display: grid;
+    }
+    /* New styles for copy button */
+    .copy-button-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .copy-success {
+      color: var(--accent);
+      font-weight: 600;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .copy-success.active {
+      opacity: 1;
+    }
+    .file-input-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+    .file-row {
+        display: flex;
+        gap: 8px;
+    }
+    .file-row input {
+        flex-grow: 1;
+    }
+    .file-row button {
+        flex-shrink: 0;
+        width: auto;
+    }
+  </style>
+</head>
+<body data-theme="dark">
+
+  <section class="screen active" id="login-screen">
+    <div class="container" style="display:grid;place-items:center;min-height:100vh;">
+      <div class="card" style="width:100%;max-width:400px;">
+        <h2>Login</h2>
+        <input type="text" id="fullname" placeholder="Full Name">
+        <input type="password" id="password" placeholder="Password">
+        <button class="btn btn-primary" onclick="login()">Login</button>
+        <p id="error" style="color:red;"></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen welcome-screen" id="welcome">
+    <h1 class="welcome-text"></h1>
+  </section>
+
+  <section class="screen" id="main-screen">
+    <div class="container">
+      <div class="header">
+        <div class="search-bar">
+          <div class="search-input-container">
+            <i class="fas fa-search" style="color:var(--muted);"></i>
+            <input type="text" id="search-input" placeholder="Search for lectures..." oninput="searchLectures()">
+          </div>
+        </div>
+        <div class="actions-bar">
+          <button id="mode-btn" class="icon-btn" onclick="toggleDarkMode()" aria-label="Toggle dark/light mode">
+            <i class="fas fa-sun"></i>
+          </button>
+          <button class="icon-btn" onclick="openBookmarks()" aria-label="View bookmarks">
+            <i class="fas fa-bookmark"></i>
+          </button>
+          <button class='icon-btn' onclick='openAdminLoginPopup()' aria-label="Admin Panel">
+            <i class="fas fa-user-lock"></i>
+          </button>
+        </div>
+      </div>
+      
+      <div id="search-results" class="search-results" style="display:none;"></div>
+
+      <div id="subjects" class="section active">
+        <h2>Subjects</h2>
+        <div class="subjects grid" id="subjects-list"></div>
+      </div>
+      <div id="chapters" class="section"></div>
+      <div id="lectures" class="section"></div>
+      <div id="bookmarks-section" class="section"></div>
+    </div>
+  </section>
+
+  <section class="screen" id="admin-screen">
+    <div class="container admin-panel">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2>Admin Panel</h2>
+            <button class='btn btn-ghost' onclick='showMainScreen()'>Back</button>
+        </div>
+        <div class="card">
+            <h3>Add New Lecture</h3>
+            <div class="form-group">
+                <label for="admin-subject">Subject</label>
+                <select id="admin-subject" onchange="populateChapters('admin-subject', 'admin-chapter')"></select>
+            </div>
+            <div class="form-group">
+                <label for="admin-chapter">Chapter</label>
+                <select id="admin-chapter"></select>
+            </div>
+            <div class="form-group">
+                <label for="admin-lecture-name">Lecture Name</label>
+                <input type="text" id="admin-lecture-name" placeholder="Lecture Name">
+            </div>
+            <div class="form-group">
+                <label for="admin-thumbnail">Thumbnail URL</label>
+                <input type="url" id="admin-thumbnail" placeholder="https://via.placeholder.com/300x180">
+            </div>
+            <div class="form-group">
+                <label for="admin-watch-url">Watch URL</label>
+                <input type="url" id="admin-watch-url" placeholder="https://youtube.com/...">
+            </div>
+            <div class="form-group">
+                <label>Files (PDF, DOCX, etc.)</label>
+                <div id="file-inputs" class="file-input-group">
+                    <div class="file-row">
+                        <input type="text" class="file-name" placeholder="File Name">
+                        <input type="url" class="file-url" placeholder="File URL">
+                        <button class="btn btn-danger" onclick="removeFileOrDpp(this)">-</button>
+                    </div>
+                </div>
+                <button class="btn btn-ghost" onclick="addFileOrDpp('file-inputs')">Add File</button>
+            </div>
+            <div class="form-group">
+                <label>DPPs (Daily Practice Problems)</label>
+                <div id="dpp-inputs" class="file-input-group">
+                    <div class="file-row">
+                        <input type="text" class="dpp-name" placeholder="DPP Name">
+                        <input type="url" class="dpp-url" placeholder="DPP URL">
+                        <button class="btn btn-danger" onclick="removeFileOrDpp(this)">-</button>
+                    </div>
+                </div>
+                <button class="btn btn-ghost" onclick="addFileOrDpp('dpp-inputs')">Add DPP</button>
+            </div>
+            <button class="btn btn-primary" onclick="addLecture()">Add Lecture</button>
+        </div>
+        
+        <br>
+
+        <div class="card">
+            <h3>Manage Subjects & Chapters</h3>
+            <div class="form-group flex-container">
+                <div class="flex-item">
+                    <label for="new-subject-name">Add New Subject</label>
+                    <input type="text" id="new-subject-name" placeholder="Subject Name">
+                    <button class="btn btn-primary" onclick="addSubject()">Add Subject</button>
+                </div>
+                <div class="flex-item">
+                    <label for="subject-to-add-chapter-to">Add Chapter to Subject</label>
+                    <select id="subject-to-add-chapter-to" onchange="populateChapters('subject-to-add-chapter-to', null)"></select>
+                    <input type="text" id="new-chapter-name" placeholder="Chapter Name">
+                    <button class="btn btn-primary" onclick="addChapter()">Add Chapter</button>
+                </div>
+            </div>
+            
+            <hr style="border-color: var(--muted); margin: 20px 0;">
+
+            <h4>Delete Subjects</h4>
+            <ul id="delete-subjects-list" class="admin-list"></ul>
+            
+            <h4>Delete Chapters</h4>
+            <select id="subject-to-delete-chapter-from" onchange="populateChapters('subject-to-delete-chapter-from', 'delete-chapters-list'); renderAdminLists();"></select>
+            <ul id="delete-chapters-list" class="admin-list"></ul>
+            
+            <h4>Delete Lectures</h4>
+            <select id="subject-to-delete-lecture-from" onchange="populateChapters('subject-to-delete-lecture-from', 'chapter-to-delete-lecture-from'); renderAdminLists();"></select>
+            <select id="chapter-to-delete-lecture-from" onchange="renderAdminLists();"></select>
+            <ul id="delete-lectures-list" class="admin-list"></ul>
+        </div>
+        
+        <br>
+
+        <div class="card">
+            <h3>Export Data</h3>
+            <p>Click the button below to generate the updated `fullData` object with your changes. Use the copy button to save the code, then replace the `fullData` object in your main HTML file.</p>
+            <div class="copy-button-container">
+                <button class="btn btn-blue" onclick="generateCode()">Generate New Code</button>
+                <button class="btn btn-primary" onclick="copyCode()"><i class="fas fa-copy"></i> Copy</button>
+                <span id="copy-success" class="copy-success">Copied!</span>
+            </div>
+        </div>
+    </div>
+  </section>
+  
+  <div id="popup" class="popup">
+    <div class="popup-content">
+      <h3>Files</h3>
+      <div id="file-links"></div>
+      <button class="btn btn-danger" onclick="closePopup()">Close</button>
+    </div>
+  </div>
+
+  <div id="admin-login-popup" class="admin-login-popup">
+    <div class="popup-content">
+        <h3>Admin Login</h3>
+        <input type="text" id="admin-id" placeholder="ID">
+        <input type="password" id="admin-password" placeholder="Password">
+        <p id="admin-error" style="color:var(--danger); text-align:center;"></p>
+        <button class="btn btn-primary" onclick="checkAdminPassword()">Login</button>
+        <button class="btn btn-ghost" onclick="closeAdminLoginPopup()">Cancel</button>
+    </div>
+  </div>
+
+  <script>
+    // Global State Variables
+    let currentUser = null;
+    let fullData = {
+  "Science": {
+    "Physics": [
+      {
+        "name": "Physics Lecture 2",
+        "thumbnail": "https://via.placeholder.com/300x180?text=Physics+L2",
+        "watch": "https://drive.google.com/phy2",
+        "files": [],
+        "dpp": [
+          {
+            "name": "DPP 2.pdf",
+            "link": "https://drive.google.com/dpp2"
+          }
+        ]
+      },
+      {
+        "name": "1phy",
+        "thumbnail": "https://1phy.jpg",
+        "watch": "https://1phy.com",
+        "files": [
+          {
+            "name": "1phy.pdf",
+            "link": "https://1phyfile.com"
+          },
+          {
+            "name": "2phy",
+            "link": "https://2phyfile.com"
+          },
+          {
+            "name": "3phy.doc",
+            "link": "https://3phyfile.com"
+          }
+        ],
+        "dpp": [
+          {
+            "name": "1dpp",
+            "link": "https://1dppphy.com"
+          },
+          {
+            "name": "2dpp.pdf",
+            "link": "https://2dppphy.com"
+          }
+        ]
+      }
+    ],
+    "Chemistry": [
+      {
+        "name": "Chemistry Lecture 1",
+        "thumbnail": "https://via.placeholder.com/300x180?text=Chemistry+L1",
+        "watch": "https://drive.google.com/chem1",
+        "files": [],
+        "dpp": [
+          {
+            "name": "DPP 1.pdf",
+            "link": "https://drive.google.com/dpp1"
+          }
+        ]
+      },
+      {
+        "name": "Chemistry Lecture 2",
+        "thumbnail": "https://via.placeholder.com/300x180?text=Chemistry+L2",
+        "watch": "https://drive.google.com/chem2",
+        "files": [],
+        "dpp": [
+          {
+            "name": "DPP 2.pdf",
+            "link": "https://drive.google.com/dpp2"
+          }
+        ]
+      }
+    ],
+    "Biology": [
+      {
+        "name": "Biology Lecture 1",
+        "thumbnail": "https://via.placeholder.com/300x180?text=Biology+L1",
+        "watch": "https://drive.google.com/bio1",
+        "files": [],
+        "dpp": [
+          {
+            "name": "DPP 1.pdf",
+            "link": "https://drive.google.com/dpp1"
+          }
+        ]
+      },
+      {
+        "name": "Biology Lecture 2",
+        "thumbnail": "https://via.placeholder.com/300x180?text=Biology+L2",
+        "watch": "https://drive.google.com/bio2",
+        "files": [],
+        "dpp": [
+          {
+            "name": "DPP 2.pdf",
+            "link": "https://drive.google.com/dpp2"
+          }
+        ]
+      }
+    ],
+    "Xyz chapter": []
+  },
+  "Mathematics": {
+    "Calculus": [
+      {
+        "name": "Calculus Lecture 1",
+        "thumbnail": "https://via.placeholder.com/300x180?text=Calculus+L1",
+        "watch": "https://drive.google.com/calc1",
+        "files": [],
+        "dpp": [
+          {
+            "name": "DPP 1.pdf",
+            "link": "https://drive.google.com/dpp1"
+          }
+        ]
+      }
+    ]
+  },
+  "Computer Science": {
+    "Data Structures": [
+      {
+        "name": "Data Structures Lecture 1",
+        "thumbnail": "https://via.placeholder.com/300x180?text=DS+L1",
+        "watch": "https://drive.google.com/ds1",
+        "files": [],
+        "dpp": [
+          {
+            "name": "DPP 1.pdf",
+            "link": "https://drive.google.com/dpp1"
+          }
+        ]
+      }
+    ]
+  },
+  "History": {
+    "Ancient Civilizations": [
+      {
+        "name": "Ancient Civilizations Lecture 1",
+        "thumbnail": "https://via.placeholder.com/300x180?text=Ancient+L1",
+        "watch": "https://drive.google.com/anc1",
+        "files": [],
+        "dpp": [
+          {
+            "name": "DPP 1-A.pdf",
+            "link": "https://drive.google.com/dpp1a"
+          },
+          {
+            "name": "DPP 1-B.docx",
+            "link": "https://drive.google.com/dpp1b"
+          }
+        ]
+      },
+      {
+        "name": "Ancient Civilizations Lecture 2",
+        "thumbnail": "https://via.placeholder.com/300x180?text=Ancient+L2",
+        "watch": "https://drive.google.com/anc2",
+        "files": [],
+        "dpp": [
+          {
+            "name": "DPP 2-A.pdf",
+            "link": "https://drive.google.com/dpp2a"
+          },
+          {
+            "name": "DPP 2-B.docx",
+            "link": "https://drive.google.com/dpp2b"
+          }
+        ]
+      }
+    ],
+    "Modern History": [
+      {
+        "name": "Modern History Lecture 1",
+        "thumbnail": "https://via.placeholder.com/300x180?text=Modern+L1",
+        "watch": "https://drive.google.com/mod1",
+        "files": [],
+        "dpp": [
+          {
+            "name": "DPP 1-A.pdf",
+            "link": "https://drive.google.com/dpp1a"
+          },
+          {
+            "name": "DPP 1-B.docx",
+            "link": "https://drive.google.com/dpp1b"
+          }
+        ]
+      }
+    ]
+  },
+  "Economics": {
+    "Microeconomics": [
+      {
+        "name": "Microeconomics Lecture 1",
+        "thumbnail": "https://via.placeholder.com/300x180?text=Micro+L1",
+        "watch": "https://drive.google.com/micro1",
+        "files": [],
+        "dpp": [
+          {
+            "name": "DPP 1.pdf",
+            "link": "https://drive.google.com/dpp1"
+          }
+        ]
+      },
+      {
+        "name": "Microeconomics Lecture 2",
+        "thumbnail": "https://via.placeholder.com/300x180?text=Micro+L2",
+        "watch": "https://drive.google.com/micro2",
+        "files": [],
+        "dpp": [
+          {
+            "name": "DPP 2.pdf",
+            "link": "https://drive.google.com/dpp2"
+          }
+        ]
+      }
+    ]
+  },
+  "Political Science": {
+    "Constitutional Law": [
+      {
+        "name": "Constitutional Law Lecture 1",
+        "thumbnail": "https://via.placeholder.com/300x180?text=Const+Law+L1",
+        "watch": "https://drive.google.com/polsci1",
+        "files": [],
+        "dpp": []
+      }
+    ]
+  },
+  "Xyz subject": {}
+};
+
+    // Initialize state on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme) {
+        document.body.dataset.theme = savedTheme;
+        updateModeIcon(savedTheme);
+      }
+      history.replaceState({ screen: 'login' }, '', '#login');
+      populateAdminPanel();
+    });
+    
+    // Listen for browser's back button
+    window.addEventListener('popstate', (event) => {
+        if (event.state) {
+            const { screen, subject, chapter, query, lectureName } = event.state;
+            if (screen === 'login') {
+                setActiveScreen('login-screen');
+            } else if (screen === 'main') {
+                setActiveScreen('main-screen');
+                setActiveSection('subjects');
+            } else if (screen === 'chapters') {
+                openChapters(subject, false);
+            } else if (screen === 'lectures') {
+                openLectures(subject, chapter, false);
+            } else if (screen === 'bookmarks') {
+                openBookmarks(false);
+            } else if (screen === 'search') {
+                document.getElementById('search-input').value = query;
+                searchLectures(false); // Pass false to prevent new history entry
+            } else if (screen === 'single_lecture') {
+                // Fixed: Handle the single lecture view on back navigation
+                showFoundLecture(subject, chapter, lectureName, false);
+            } else if (screen === 'admin') {
+                showAdminPanel(false);
+            }
+        } else {
+            setActiveScreen('login-screen');
+        }
+    });
+
+    // -----------------------------
+    // USER-SPECIFIC & ACCESSIBILITY FUNCTIONS
+    // -----------------------------
+    function login() {
+      const name = document.getElementById('fullname').value;
+      const pass = document.getElementById('password').value;
+      if (name.trim() === 'Ghanshyam' && pass.trim() === 'Pass123') {
+        currentUser = name.trim();
+        setActiveScreen('welcome');
+        const welcomeTextElement = document.querySelector('#welcome .welcome-text');
+        welcomeTextElement.innerText = `Welcome ${currentUser}`;
+        welcomeTextElement.style.animation = 'none';
+        void welcomeTextElement.offsetWidth;
+        welcomeTextElement.style.animation = 'netflixIntro 2s ease forwards';
+        
+        setTimeout(() => {
+          setActiveScreen('main-screen');
+          renderSubjects();
+          history.replaceState({ screen: 'main' }, '', '#main');
+        }, 2500);
+      } else {
+        document.getElementById('error').innerText = "Invalid name or password!";
+      }
+    }
+
+    function toggleDarkMode() {
+      const currentTheme = document.body.dataset.theme;
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      document.body.dataset.theme = newTheme;
+      localStorage.setItem('theme', newTheme);
+      updateModeIcon(newTheme);
+      renderSubjects();
+    }
+    
+    function updateModeIcon(theme) {
+      const modeBtn = document.getElementById('mode-btn');
+      modeBtn.innerHTML = theme === 'dark' 
+          ? '<i class="fas fa-sun"></i>' 
+          : '<i class="fas fa-moon"></i>';
+    }
+    
+    // localStorage helper functions
+    function getUserData(type) {
+        if (!currentUser) return [];
+        const key = `${currentUser.toLowerCase()}_${type}`;
+        const data = localStorage.getItem(key);
+        return data ? JSON.parse(data) : [];
+    }
+
+    function saveUserData(type, data) {
+        if (!currentUser) return;
+        const key = `${currentUser.toLowerCase()}_${type}`;
+        localStorage.setItem(key, JSON.stringify(data));
+    }
+    
+    function saveProgress(lectureName, subject, chapter) {
+      const completedLectures = getUserData('completed_lectures');
+      const index = completedLectures.indexOf(lectureName);
+      
+      if (index > -1) {
+        completedLectures.splice(index, 1);
+        console.log(`Progress removed for: ${lectureName}`);
+      } else {
+        completedLectures.push(lectureName);
+        console.log(`Progress saved for: ${lectureName}`);
+      }
+      
+      saveUserData('completed_lectures', completedLectures);
+      
+      const currentPath = window.location.hash;
+      if (subject && chapter) {
+        openLectures(subject, chapter, false);
+      } else if (currentPath.includes('bookmarks')) {
+         openBookmarks(false);
+      } else if (currentPath.includes('search')) {
+         searchLectures();
+      } else {
+         renderSubjects();
+      }
+    }
+
+    function addBookmark(lecture) {
+      const bookmarks = getUserData('bookmarks');
+      const isBookmarked = bookmarks.some(b => b.name === lecture.name);
+      if (!isBookmarked) {
+        bookmarks.push(lecture);
+        saveUserData('bookmarks', bookmarks);
+        console.log(`Lecture bookmarked: ${lecture.name}`);
+        alert(`${lecture.name} added to bookmarks!`);
+      } else {
+        alert(`${lecture.name} is already bookmarked.`);
+      }
+    }
+    
+    function removeBookmark(lectureName) {
+        let bookmarks = getUserData('bookmarks');
+        bookmarks = bookmarks.filter(b => b.name !== lectureName);
+        saveUserData('bookmarks', bookmarks);
+        alert(`${lectureName} removed from bookmarks.`);
+        openBookmarks();
+    }
+
+    function openBookmarks(pushState = true) {
+      const bookmarks = getUserData('bookmarks');
+      setActiveSection('bookmarks-section');
+      if (pushState) history.pushState({ screen: 'bookmarks' }, '', '#bookmarks');
+
+      const bookmarksSection = document.getElementById('bookmarks-section');
+      const completedLectures = getUserData('completed_lectures');
+      
+      bookmarksSection.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2>My Bookmarks</h2>
+            <button class='btn btn-ghost' onclick='goBack()'>Back</button>
+        </div>
+        <div class='lectures grid'>
+          ${bookmarks.length ? bookmarks.map(lec => {
+            const isCompleted = completedLectures.includes(lec.name);
+            return `
+              <div class='item'>
+                <div class="item-header">
+                  <h4>${lec.name}</h4>
+                  <button class="btn btn-danger" onclick="removeBookmark('${lec.name}')">Remove</button>
+                </div>
+                ${isCompleted
+                  ? `<button class="complete-btn completed" onclick="saveProgress('${lec.name}')" aria-label="Un-mark as complete"><i class="fas fa-check"></i></button>`
+                  : `<button class="complete-btn incomplete" onclick="saveProgress('${lec.name}')" aria-label="Mark as complete"><i class="fas fa-check"></i></button>`
+                }
+                <img src='${lec.thumbnail}' class='thumb' onclick="window.open('${lec.watch}','_blank')"/>
+                <div class="all-actions-row">
+                    <div class="main-buttons">
+                        <button class='btn btn-blue' onclick="window.open('${lec.watch}','_blank')">Watch</button>
+                        <button class='btn btn-primary' onclick='openPopup(${JSON.stringify(lec.files)}, "Files")'>Files</button>
+                        <button class='btn btn-blue' onclick='openPopup(${JSON.stringify(lec.dpp)}, "DPP")'>DPP</button>
+                    </div>
+                </div>
+              </div>
+            `;
+          }).join('') : '<p style="text-align:center;">No bookmarks saved yet.</p>'}
+        </div>
+      `;
+    }
+
+    // -----------------------------
+    // UTILITY & NAVIGATION ENHANCEMENTS
+    // -----------------------------
+    function setActiveScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(screen => {
+            screen.classList.remove('active');
+        });
+        document.getElementById(screenId).classList.add('active');
+    }
+    
+    function setActiveSection(sectionId) {
+      document.querySelectorAll('.section').forEach(section => {
+        section.classList.remove('active');
+      });
+      if (sectionId) {
+          document.getElementById(sectionId).classList.add('active');
+      }
+      document.getElementById('search-results').style.display = 'none';
+      document.getElementById('search-input').value = '';
+    }
+
+    function goBack() {
+        window.history.back();
+    }
+    
+    function sortLectures(lectures, sortBy = 'name') {
+      const sorted = [...lectures];
+      sorted.sort((a, b) => {
+        if (a[sortBy] < b[sortBy]) return -1;
+        if (a[sortBy] > b[sortBy]) return 1;
+        return 0;
+      });
+      return sorted;
+    }
+
+    // -----------------------------
+    // DATA & RENDERING FUNCTIONS
+    // -----------------------------
+    function renderSubjects() {
+      setActiveSection('subjects');
+      const subjectsList = document.getElementById('subjects-list');
+      subjectsList.innerHTML = Object.keys(fullData).map(sub =>
+        `<div class='item' onclick="openChapters('${sub}')">${sub}</div>`
+      ).join('');
+    }
+
+    function openChapters(subject, pushState = true) {
+      if (pushState) history.pushState({ screen: 'chapters', subject: subject }, '', `#${subject}`);
+      setActiveSection('chapters');
+      const chaptersDiv = document.getElementById('chapters');
+      chaptersDiv.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2>${subject} - Chapters</h2>
+            <button class='btn btn-ghost' onclick='goBack()'>Back</button>
+        </div>
+        <div class='grid'>
+          ${Object.keys(fullData[subject]).map(chap =>
+            `<div class='item' onclick="openLectures('${subject}','${chap}')">${chap}</div>`
+          ).join('')}
+        </div>
+      `;
+    }
+
+    function openLectures(subject, chapter, pushState = true) {
+      if (pushState) history.pushState({ screen: 'lectures', subject: subject, chapter: chapter }, '', `#${subject}/${chapter}`);
+      setActiveSection('lectures');
+
+      const lecturesDiv = document.getElementById('lectures');
+      const lectures = sortLectures(fullData[subject][chapter]);
+      const completedLectures = getUserData('completed_lectures');
+      
+      lecturesDiv.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2>${chapter} - Lectures</h2>
+            <button class='btn btn-ghost' onclick='goBack()'>Back</button>
+        </div>
+        <div class='lectures grid'>
+          ${lectures.map(lec => {
+            const isCompleted = completedLectures.includes(lec.name);
+            return `
+              <div class='item'>
+                ${isCompleted
+                  ? `<button class="complete-btn completed" onclick="saveProgress('${lec.name}', '${subject}', '${chapter}')" aria-label="Un-mark as complete"><i class="fas fa-check"></i></button>`
+                  : `<button class="complete-btn incomplete" onclick="saveProgress('${lec.name}', '${subject}', '${chapter}')" aria-label="Mark as complete"><i class="fas fa-check"></i></button>`
+                }
+                <h4>${lec.name}</h4>
+                <img src='${lec.thumbnail}' class='thumb' onclick="window.open('${lec.watch}','_blank')"/>
+                <div class="all-actions-row">
+                    <div class="main-buttons">
+                        <button class='btn btn-blue' onclick="window.open('${lec.watch}','_blank')">Watch</button>
+                        <button class='btn btn-primary' onclick='openPopup(${JSON.stringify(lec.files)}, "Files")'>Files</button>
+                        <button class='btn btn-blue' onclick='openPopup(${JSON.stringify(lec.dpp)}, "DPP")'>DPP</button>
+                    </div>
+                    <button class='icon-btn' style="width:auto;height:auto;padding: 10px; border-radius:12px;" onclick='addBookmark(${JSON.stringify(lec)})' aria-label="Bookmark this lecture">
+                        <i class="fas fa-bookmark"></i>
+                    </button>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    function openPopup(files, title) {
+      const popup = document.getElementById('popup');
+      const fileLinks = document.getElementById('file-links');
+      const popupTitle = document.querySelector('#popup .popup-content h3');
+      popupTitle.innerText = title;
+
+      fileLinks.innerHTML = files.length ? files.map(f =>
+        `<a href='${f.link}' target='_blank'>${f.name}</a>`
+      ).join('') : '<p>No files available</p>';
+      
+      popup.classList.add('active');
+    }
+    function closePopup() { document.getElementById('popup').classList.remove('active'); }
+    
+    function showMainScreen() {
+      document.getElementById('search-input').value = '';
+      document.getElementById('search-results').style.display = 'none';
+      setActiveScreen('main-screen');
+      setActiveSection('subjects');
+      history.replaceState({ screen: 'main' }, '', '#main');
+    }
+    
+    function searchLectures(pushState = true) {
+      const query = document.getElementById('search-input').value.toLowerCase();
+      const resultsDiv = document.getElementById('search-results');
+      const sections = document.querySelectorAll('.section');
+      
+      if (query.length > 0) {
+        if (pushState) history.pushState({ screen: 'search', query: query }, '', `#search?q=${query}`);
+        
+        sections.forEach(section => section.style.display = 'none');
+        resultsDiv.style.display = 'block';
+        
+        let foundLectures = [];
+        for (const subject in fullData) {
+          for (const chapter in fullData[subject]) {
+            fullData[subject][chapter].forEach(lecture => {
+              if (lecture.name.toLowerCase().includes(query) || subject.toLowerCase().includes(query) || chapter.toLowerCase().includes(query)) {
+                foundLectures.push({
+                  subject: subject,
+                  chapter: chapter,
+                  lecture: lecture
+                });
+              }
+            });
+          }
+        }
+
+        if (foundLectures.length > 0) {
+          resultsDiv.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <h2>Search Results</h2>
+              <button class='btn btn-ghost' onclick='showMainScreen()'>Back</button>
+            </div>
+            ${foundLectures.map(item => `
+              <div class='result-item' onclick="showFoundLecture('${item.subject}', '${item.chapter}', '${item.lecture.name}')">
+                <h4>${item.lecture.name}</h4>
+                <p>${item.subject} - ${item.chapter}</p>
+              </div>
+            `).join('')}
+          `;
+        } else {
+          resultsDiv.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <h2>Search Results</h2>
+              <button class='btn btn-ghost' onclick='showMainScreen()'>Back</button>
+            </div>
+            <p style="text-align:center; color:var(--muted);">No lectures found.</p>
+          `;
+        }
+      } else {
+        showMainScreen();
+      }
+    }
+
+    // Fixed: Added pushState parameter to control history
+    function showFoundLecture(subject, chapter, lectureName, pushState = true) {
+      const lecturesDiv = document.getElementById('lectures');
+      
+      const filteredLecture = fullData[subject][chapter].find(lec => lec.name === lectureName);
+      if (!filteredLecture) {
+        alert("Lecture not found.");
+        return;
+      }
+      
+      setActiveSection('lectures');
+      if (pushState) history.pushState({ screen: 'single_lecture', subject: subject, chapter: chapter, lectureName: lectureName }, '', `#${subject}/${chapter}/${lectureName}`);
+      
+      const completedLectures = getUserData('completed_lectures');
+      const isCompleted = completedLectures.includes(filteredLecture.name);
+      
+      lecturesDiv.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2>${filteredLecture.name}</h2>
+            <button class='btn btn-ghost' onclick='goBack()'>Back</button>
+        </div>
+        <div class='lectures grid'>
+          <div class='item'>
+            ${isCompleted
+              ? `<button class="complete-btn completed" onclick="saveProgress('${filteredLecture.name}', '${subject}', '${chapter}')" aria-label="Un-mark as complete"><i class="fas fa-check"></i></button>`
+              : `<button class="complete-btn incomplete" onclick="saveProgress('${filteredLecture.name}', '${subject}', '${chapter}')" aria-label="Mark as complete"><i class="fas fa-check"></i></button>`
+            }
+            <h4>${filteredLecture.name}</h4>
+            <img src='${filteredLecture.thumbnail}' class='thumb' onclick="window.open('${filteredLecture.watch}','_blank')"/>
+            <div class="all-actions-row">
+                <div class="main-buttons">
+                    <button class='btn btn-blue' onclick="window.open('${filteredLecture.watch}','_blank')">Watch</button>
+                    <button class='btn btn-primary' onclick='openPopup(${JSON.stringify(filteredLecture.files)}, "Files")'>Files</button>
+                    <button class='btn btn-blue' onclick='openPopup(${JSON.stringify(filteredLecture.dpp)}, "DPP")'>DPP</button>
+                </div>
+                <button class='icon-btn' style="width:auto;height:auto;padding: 10px; border-radius:12px;" onclick='addBookmark(${JSON.stringify(filteredLecture)})' aria-label="Bookmark this lecture">
+                        <i class="fas fa-bookmark"></i>
+                </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // -----------------------------
+    // ADMIN PANEL FUNCTIONS
+    // -----------------------------
+    function openAdminLoginPopup() {
+      document.getElementById('admin-login-popup').classList.add('active');
+    }
+
+    function closeAdminLoginPopup() {
+      document.getElementById('admin-login-popup').classList.remove('active');
+      document.getElementById('admin-id').value = '';
+      document.getElementById('admin-password').value = '';
+      document.getElementById('admin-error').innerText = '';
+    }
+
+    function checkAdminPassword() {
+      const adminId = document.getElementById('admin-id').value;
+      const adminPass = document.getElementById('admin-password').value;
+      const errorDiv = document.getElementById('admin-error');
+
+      if (adminId === 'Lll' && adminPass === 'Pass') {
+        closeAdminLoginPopup();
+        showAdminPanel();
+      } else {
+        errorDiv.innerText = "Invalid ID or password.";
+      }
+    }
+
+    function showAdminPanel(pushState = true) {
+        if (pushState) history.pushState({ screen: 'admin' }, '', '#admin');
+        setActiveScreen('admin-screen');
+        populateAdminPanel();
+    }
+
+    function populateAdminPanel() {
+        populateSelect('admin-subject');
+        populateSelect('subject-to-add-chapter-to');
+        populateSelect('subject-to-delete-chapter-from');
+        populateSelect('subject-to-delete-lecture-from');
+        populateChapters('admin-subject', 'admin-chapter');
+        populateChapters('subject-to-delete-chapter-from', 'delete-chapters-list');
+        populateChapters('subject-to-delete-lecture-from', 'chapter-to-delete-lecture-from');
+        renderAdminLists();
+    }
+
+    function populateSelect(selectId) {
+        const select = document.getElementById(selectId);
+        select.innerHTML = '<option value="">-- Select Subject --</option>';
+        Object.keys(fullData).forEach(subject => {
+            select.innerHTML += `<option value="${subject}">${subject}</option>`;
+        });
+    }
+
+    function populateChapters(subjectSelectId, chapterSelectId) {
+        const subject = document.getElementById(subjectSelectId).value;
+        const chapterSelect = document.getElementById(chapterSelectId);
+        if (chapterSelect) {
+            chapterSelect.innerHTML = '<option value="">-- Select Chapter --</option>';
+            if (subject && fullData[subject]) {
+                Object.keys(fullData[subject]).forEach(chapter => {
+                    chapterSelect.innerHTML += `<option value="${chapter}">${chapter}</option>`;
+                });
+            }
+        }
+    }
+    
+    function addFileOrDpp(containerId) {
+        const container = document.getElementById(containerId);
+        const newRow = document.createElement('div');
+        newRow.classList.add('file-row');
+        const fileType = containerId.includes('file') ? 'file' : 'dpp';
+        newRow.innerHTML = `
+            <input type="text" class="${fileType}-name" placeholder="${fileType.toUpperCase()} Name">
+            <input type="url" class="${fileType}-url" placeholder="${fileType.toUpperCase()} URL">
+            <button class="btn btn-danger" onclick="removeFileOrDpp(this)">-</button>
+        `;
+        container.appendChild(newRow);
+    }
+    
+    function removeFileOrDpp(button) {
+        button.closest('.file-row').remove();
+    }
+
+    function addSubject() {
+        const subjectName = document.getElementById('new-subject-name').value.trim();
+        if (subjectName && !fullData[subjectName]) {
+            fullData[subjectName] = {};
+            alert(`Subject '${subjectName}' added.`);
+            populateAdminPanel();
+        } else {
+            alert("Please enter a valid, unique subject name.");
+        }
+    }
+
+    function addChapter() {
+        const subjectName = document.getElementById('subject-to-add-chapter-to').value;
+        const chapterName = document.getElementById('new-chapter-name').value.trim();
+        if (subjectName && chapterName && !fullData[subjectName][chapterName]) {
+            fullData[subjectName][chapterName] = [];
+            alert(`Chapter '${chapterName}' added to '${subjectName}'.`);
+            populateAdminPanel();
+        } else {
+            alert("Please select a subject and enter a valid, unique chapter name.");
+        }
+    }
+    
+    function getFileOrDppData(containerId, nameClass, urlClass) {
+        const data = [];
+        const container = document.getElementById(containerId);
+        const rows = container.querySelectorAll('.file-row');
+        rows.forEach(row => {
+            const name = row.querySelector(`.${nameClass}`).value.trim();
+            const url = row.querySelector(`.${urlClass}`).value.trim();
+            if (name && url) {
+                data.push({ name: name, link: url });
+            }
+        });
+        return data;
+    }
+
+    function addLecture() {
+        const subject = document.getElementById('admin-subject').value;
+        const chapter = document.getElementById('admin-chapter').value;
+        const name = document.getElementById('admin-lecture-name').value.trim();
+        const thumbnail = document.getElementById('admin-thumbnail').value.trim();
+        const watch = document.getElementById('admin-watch-url').value.trim();
+        
+        const files = getFileOrDppData('file-inputs', 'file-name', 'file-url');
+        const dpp = getFileOrDppData('dpp-inputs', 'dpp-name', 'dpp-url');
+        
+        if (subject && chapter && name && thumbnail && watch) {
+            const newLecture = {
+                name: name,
+                thumbnail: thumbnail,
+                watch: watch,
+                files: files,
+                dpp: dpp
+            };
+            fullData[subject][chapter].push(newLecture); 
+            alert(`Lecture '${name}' added.`);
+            
+            document.getElementById('admin-lecture-name').value = '';
+            document.getElementById('admin-thumbnail').value = '';
+            document.getElementById('admin-watch-url').value = '';
+            document.getElementById('file-inputs').innerHTML = `<div class="file-row"><input type="text" class="file-name" placeholder="File Name"><input type="url" class="file-url" placeholder="File URL"><button class="btn btn-danger" onclick="removeFileOrDpp(this)">-</button></div>`;
+            document.getElementById('dpp-inputs').innerHTML = `<div class="file-row"><input type="text" class="dpp-name" placeholder="DPP Name"><input type="url" class="dpp-url" placeholder="DPP URL"><button class="btn btn-danger" onclick="removeFileOrDpp(this)">-</button></div>`;
+            
+            renderAdminLists();
+        } else {
+            alert("Please fill in all required lecture details.");
+        }
+    }
+
+    function deleteSubject(subject) {
+        if (confirm(`Are you sure you want to delete the subject '${subject}' and all its content?`)) {
+            delete fullData[subject];
+            alert(`Subject '${subject}' deleted.`);
+            populateAdminPanel();
+        }
+    }
+
+    function deleteChapter(subject, chapter) {
+        console.log(`Attempting to delete chapter: ${chapter} from subject: ${subject}`);
+        if (confirm(`Are you sure you want to delete the chapter '${chapter}' and all its lectures?`)) {
+            if (fullData[subject] && fullData[subject][chapter]) {
+                delete fullData[subject][chapter];
+                alert(`Chapter '${chapter}' deleted.`);
+                populateAdminPanel();
+            } else {
+                alert("Chapter not found. It may have been deleted already.");
+                populateAdminPanel();
+            }
+        }
+    }
+    
+    function deleteLecture(subject, chapter, lectureName) {
+        if (confirm(`Are you sure you want to delete the lecture '${lectureName}'?`)) {
+            fullData[subject][chapter] = fullData[subject][chapter].filter(lec => lec.name !== lectureName);
+            alert(`Lecture '${lectureName}' deleted.`);
+            renderAdminLists();
+        }
+    }
+
+    function renderAdminLists() {
+        const subjectsList = document.getElementById('delete-subjects-list');
+        const chaptersList = document.getElementById('delete-chapters-list');
+        const lecturesList = document.getElementById('delete-lectures-list');
+
+        const subjectToDeleteChapterFrom = document.getElementById('subject-to-delete-chapter-from').value;
+        const subjectToDeleteLectureFrom = document.getElementById('subject-to-delete-lecture-from').value;
+        const chapterToDeleteLectureFrom = document.getElementById('chapter-to-delete-lecture-from').value;
+
+        subjectsList.innerHTML = Object.keys(fullData).map(subject => `
+            <li>
+                ${subject}
+                <button class="btn remove-btn" onclick="deleteSubject('${subject}')">Delete</button>
+            </li>
+        `).join('');
+
+        if (subjectToDeleteChapterFrom && fullData[subjectToDeleteChapterFrom]) {
+            chaptersList.innerHTML = Object.keys(fullData[subjectToDeleteChapterFrom]).map(chapter => `
+                <li>
+                    ${chapter}
+                    <button class="btn remove-btn" onclick="deleteChapter('${subjectToDeleteChapterFrom}', '${chapter}')">Delete</button>
+                </li>
+            `).join('');
+        } else {
+            chaptersList.innerHTML = '';
+        }
+
+        if (subjectToDeleteLectureFrom && chapterToDeleteLectureFrom && fullData[subjectToDeleteLectureFrom][chapterToDeleteLectureFrom]) {
+            lecturesList.innerHTML = fullData[subjectToDeleteLectureFrom][chapterToDeleteLectureFrom].map(lecture => `
+                <li>
+                    ${lecture.name}
+                    <button class="btn remove-btn" onclick="deleteLecture('${subjectToDeleteLectureFrom}', '${chapterToDeleteLectureFrom}', '${lecture.name}')">Delete</button>
+                </li>
+            `).join('');
+        } else {
+            lecturesList.innerHTML = '';
+        }
+    }
+    
+    function generateCode() {
+        const code = `const fullData = ${JSON.stringify(fullData, null, 2)};`;
+        const newWindow = window.open('', '_blank');
+        newWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Generated Code</title>
+                <style>
+                    body { font-family: monospace; background: #1e293b; color: #e2e8f0; padding: 20px; }
+                    pre { background: #0f172a; padding: 20px; border-radius: 12px; white-space: pre-wrap; word-wrap: break-word; }
+                </style>
+            </head>
+            <body>
+                <h1>Copy and Paste This Code</h1>
+                <p>Use this updated code to replace the existing <code>fullData</code> object in your main HTML file.</p>
+                <pre id="code-to-copy">${code}</pre>
+            </body>
+            </html>
+        `);
+        newWindow.document.close();
+    }
+    
+    function copyCode() {
+        const code = `const fullData = ${JSON.stringify(fullData, null, 2)};`;
+        navigator.clipboard.writeText(code).then(() => {
+            const copySuccess = document.getElementById('copy-success');
+            copySuccess.classList.add('active');
+            setTimeout(() => {
+                copySuccess.classList.remove('active');
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy code: ', err);
+            alert('Failed to copy the code. Please try again.');
+        });
+    }
+  </script>
+</body>
+</html>
